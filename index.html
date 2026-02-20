@@ -25,7 +25,6 @@
         }
         .fb-container {
             width: 100%;
-            min-height: 500px;
             background: white;
             border-radius: 12px;
             overflow: hidden;
@@ -35,10 +34,6 @@
     </style>
 </head>
 <body class="pb-10">
-    <!-- Facebook SDK -->
-    <div id="fb-root"></div>
-    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
-
     <div class="max-w-md mx-auto">
         <!-- Profile Header -->
         <div class="bg-white p-6 rounded-b-3xl shadow-sm mb-6 flex items-center justify-between">
@@ -64,7 +59,7 @@
                 <span class="text-2xl">✅</span>
                 <div>
                     <h3 class="font-bold text-green-800 text-sm">Checked In!</h3>
-                    <p class="text-xs text-green-600">Daily +1 point awarded</p>
+                    <p class="text-xs text-green-600">+1 point awarded for opening</p>
                 </div>
             </div>
         </div>
@@ -78,18 +73,15 @@
                 </div>
                 
                 <div class="fb-container p-2">
-                    <!-- FB Post Embed 
-                    <iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2Fshare%2Fp%2F1B9DACnbmB%2F&show_text=true&width=500" 
-                            width="100%" height="550" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" 
-                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
-                --><iframe src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2FThailand.AIA%2Fposts%2Fpfbid0q4yrXMdCRBUvKguN12gF5wp7NDE1pSbKWbferGZa4t6giv1of51qK7GbUryfV9Zfl&show_text=true&width=500" width="500" height="706" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
-</div>
+                    <iframe id="fb-iframe" src="https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2FThailand.AIA%2Fposts%2Fpfbid0q4yrXMdCRBUvKguN12gF5wp7NDE1pSbKWbferGZa4t6giv1of51qK7GbUryfV9Zfl&show_text=true&width=500" width="100%" height="500" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+                </div>
+
                 <div class="p-4">
                     <button id="share-btn" class="w-full bg-[#1877F2] hover:bg-blue-700 text-white font-bold py-4 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-lg shadow-blue-200">
                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                         <span>Share to Facebook</span>
                     </button>
-                    <p class="text-center text-[11px] text-gray-400 mt-3">Points will be added after sharing the post</p>
+                    <p class="text-center text-[11px] text-gray-400 mt-3">Points will be added after you return from sharing</p>
                 </div>
             </div>
         </div>
@@ -102,18 +94,16 @@
 
     <script>
         // Constants
-        const LIFF_ID = '2007784462-JesMJITr'; // Optional: Add if using a specific LIFF ID
-        const FB_POST_URL = 'https://www.facebook.com/share/p/1B9DACnbmB/';
+        const LIFF_ID = '2007784462-JesMJITr';
+        const FB_POST_URL = 'https://www.facebook.com/Thailand.AIA/posts/pfbid0q4yrXMdCRBUvKguN12gF5wp7NDE1pSbKWbferGZa4t6giv1of51qK7GbUryfV9Zfl';
         
         // State Management
         let points = parseInt(localStorage.getItem('user_points') || '0');
-        let lastCheckIn = localStorage.getItem('last_checkin_date'); // Format: YYYY-MM-DD
 
         // Initialization
         async function init() {
             try {
-                // 1. Initialize LIFF
-                await liff.init({ liffId: LIFF_ID || "2006880053-97BwK7A2" }); // Dummy/Real ID fallback
+                await liff.init({ liffId: LIFF_ID });
                 
                 if (!liff.isLoggedIn()) {
                     liff.login();
@@ -124,41 +114,27 @@
                 document.getElementById('display-name').textContent = profile.displayName;
                 document.getElementById('profile-img').src = profile.pictureUrl || 'https://via.placeholder.com/60';
                 
-                // 2. Initialize FB SDK
-                window.fbAsyncInit = function() {
-                    FB.init({
-                        appId: '123456789', // Replace with a real FB App ID for production sharing
-                        autoLogAppEvents: true,
-                        xfbml: true,
-                        version: 'v18.0'
-                    });
-                };
-
-                // 3. Process Daily Check-in
-                processDailyCheckIn();
-                
-                // 4. Update initial UI
+                // Update UI with existing points first
                 updatePointsUI(false);
+
+                // Award point for EVERY page open
+                processCheckIn();
 
             } catch (err) {
                 console.error('Initialization failed', err);
                 document.getElementById('display-name').textContent = "Guest User";
+                updatePointsUI(false);
             }
         }
 
-        function processDailyCheckIn() {
-            const today = new Date().toISOString().split('T')[0];
-            
-            if (lastCheckIn !== today) {
-                // Award 1 point
-                addPoints(1, "Daily Check-in");
-                localStorage.setItem('last_checkin_date', today);
-                lastCheckIn = today;
-                
+        function processCheckIn() {
+            // No date check anymore - simple increment on load
+            setTimeout(() => {
+                addPoints(1, "Check-in Reward");
                 const banner = document.getElementById('checkin-banner');
                 banner.classList.remove('hidden');
-                setTimeout(() => banner.classList.add('animate__animated', 'animate__fadeInDown'), 100);
-            }
+                banner.classList.add('animate__animated', 'animate__fadeInDown');
+            }, 800);
         }
 
         function addPoints(amount, reason) {
@@ -186,9 +162,8 @@
             float.className = 'point-float';
             float.textContent = `+${amount}`;
             
-            // Position near the point display
             const rect = document.getElementById('points-display').getBoundingClientRect();
-            float.style.left = `${rect.left}px`;
+            float.style.left = `${rect.left + 10}px`;
             float.style.top = `${rect.top}px`;
             
             document.body.appendChild(float);
@@ -202,36 +177,23 @@
             setTimeout(() => { toast.style.opacity = '0'; }, 3000);
         }
 
-        // Event Listeners
+        // Improved Share Logic for LINE Browser
         document.getElementById('share-btn').addEventListener('click', () => {
-            // Using FB SDK UI Share
-            // Note: In LIFF, we often use the FB URL scheme or SDK. 
-            // Since we don't have a real App ID verified here, we simulate the success callback.
+            const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(FB_POST_URL)}`;
             
-            if (window.FB) {
-                FB.ui({
-                    method: 'share',
-                    href: FB_POST_URL,
-                }, function(response) {
-                    // Note: Modern FB API often returns empty response for privacy
-                    // We treat the closing of the dialog/triggering as a 'share attempt'
-                    // For demo purposes, we award points on return.
-                    addPoints(5, "Facebook Share");
-                });
-            } else {
-                // Fallback for environments where FB SDK is blocked or not loaded
-                const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(FB_POST_URL)}`;
-                window.open(shareUrl, '_blank');
-                
-                // Since sharer.php doesn't have a callback, we award points after a small delay
-                // simulating the user coming back to the app
-                setTimeout(() => {
-                    addPoints(5, "Facebook Share");
-                }, 2000);
-            }
+            // liff.openWindow is the correct way to open external links within LINE
+            liff.openWindow({
+                url: shareUrl,
+                external: true
+            });
+
+            // We award points assuming the user completes the share 
+            // Since we can't track the actual share success via URL sharer
+            setTimeout(() => {
+                addPoints(5, "Share Reward");
+            }, 1000);
         });
 
-        // Run Init
         window.onload = init;
     </script>
 </body>
